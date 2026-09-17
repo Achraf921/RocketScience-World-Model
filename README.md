@@ -9,7 +9,7 @@ demo : https://mira-wm.com/
 
 Currentley trying to re-implement the paper and at the moment I changed the mixing formula of the different DINOv3-L layers from the mean formular described in the paper to a trained neural net to see if this can yield anything or in contrast worsen validation loss. Goal is to get to a smaller scale implementation of the model and learn about world models 
 
-#BTW
+## BTW
 
 if you are reading this and work with/have interest in world model and want to chat feel free to reach out, I don't really do linkedin that much though you can find it on my GH profile but I'll be way more responsive on Instagram at ```@92.ash0```
 
