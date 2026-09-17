@@ -11,6 +11,6 @@ Currentley trying to re-implement the paper and at the moment I changed the mixi
 
 ## BTW
 
-if you are reading this and work with/have interest in world model and want to chat feel free to reach out, I don't really do linkedin that much though you can find it on my GH profile but I'll be way more responsive on Instagram at ```@92.ash0```
+if you are reading this and work with/have interest in world models and want to chat feel free to reach out, I don't really do linkedin that much though you can find it on my GH profile but I'll be way more responsive on Instagram at ```@92.ash0```
 
 this is far from the final version and I'll try to update it frequently rather than doing it all on my local machine because why not
