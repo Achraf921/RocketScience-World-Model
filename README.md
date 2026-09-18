@@ -11,12 +11,12 @@ Currentley trying to re-implement the paper and at the moment I changed the mixi
 
 ## Current state: 
 
-Mostly done with the Codec as a whole, the encoder's implementation is trivial since we are importing the frozen weights from Meta's DINOv3-L, but re-implementing the decoder was much harder since we had this time to provide our complete custom implementation of a ViT and handle the space and time upscaling tensor transformation which were highkey the hardest part.
+Done with the codec end to end, pre-processor, encoder, decoder, post-processor (optional and really only useful for inference)
+Building the loss/optimizer and training loop as specified by the paper
 
 ### Direct next steps:
 
-Complete the codec with a pre-processing block that splits the clips into frames and into the right tensor format our encoder consumes and does so the other way around in a non-learned way ofc so that we can actually set up the training loop and set up the
-loss function and the optimizer and train
+train !
 
 
 ## BTW
