@@ -29,7 +29,7 @@ device = 'mps' if torch.mps.is_available() else 'cuda' if torch.cuda.is_availabl
 
 #------ some hyperparameters to scale down the model for M4, 24GB test training, discard/comment_out for the real run
 decoder_mlp_mult = 4
-T = 40
+T = 20
 n_head = 12
 depth = 12
 n_embd = 768
@@ -53,7 +53,7 @@ dl = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=num_workers
 it = iter(dl)
 # iterator of tensors [32, 40, 3, 720, 1280], 30672 of them exactly from our current data
 
-ds_test = RLClips("data/rocket/test/unpacked", T=T)
+ds_test = RLClips("data/rocket/train/unpacked", T=T)
 dl_test = DataLoader(ds_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 it_test = iter(dl_test)
 
@@ -93,12 +93,13 @@ for step in range(total_steps):
             it_test = iter(dl_test)
             test_batch = next(it_test).to(device)
         codec.eval() # switching bool off
-        x = test_batch.flatten(0, 1) # (T*B, C, H, W)
-        x = codec.pre_processor(x)
-        enc, intermediate = codec.encoder(x, is_training=True) # such that we get both output and the layers we need
-        y = codec.decoder(enc)
-        # compute loss
-        val_loss = codec.loss(x,y,intermediate_layers=intermediate)
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):         
+            x = test_batch.flatten(0, 1) # (T*B, C, H, W)
+            x = codec.pre_processor(x)
+            enc, intermediate = codec.encoder(x, is_training=True) # such that we get both output and the layers we need
+            y = codec.decoder(enc)
+            # compute loss
+            val_loss = codec.loss(x,y,intermediate_layers=intermediate)
         print(f'Validation Loss : {val_loss.item():.4f}')
         log.write(f"val,{step},{lr:.2e},{val_loss.item():.4f}\n"); log.flush()
 
@@ -144,7 +145,7 @@ max_lr = 2e-4
 num_workers = 8 
 checkpoint = 2000
 decoder_mlp_mult = 4
-T = 40
+T = 20
 n_head = 12
 depth = 12
 n_embd = 768

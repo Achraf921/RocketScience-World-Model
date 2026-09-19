@@ -40,6 +40,7 @@ class Codec(nn.Module):
         self.mean = torch.tensor([0.485, 0.456, 0.406]).reshape(3,1,1)
         self.std = torch.tensor([0.229, 0.224, 0.225]).reshape(3,1,1)
         # hardcoded means and std from ImageNet
+        self.lambda_msd = self.lambda_lpips = torch.tensor(1.0)
 
     # we need to implement a couple inner functions
 
@@ -110,11 +111,16 @@ class Codec(nn.Module):
         # gains
             eps = 1e-4
             w = self.decoder.token_scale_conv.weight
-            g_rec = torch.autograd.grad(l1_component, w, retain_graph=True)[0].norm()
-            g_msd = torch.autograd.grad(intermediate_msd, w, retain_graph=True)[0].norm()
-            g_lp  = torch.autograd.grad(lpips_component, w, retain_graph=True)[0].norm()
-            lambda_msd   = (g_rec / (g_msd + eps)).detach()
-            lambda_lpips = (g_rec / (g_lp + eps)).detach()
+            if torch.is_grad_enabled():
+                g_rec = torch.autograd.grad(l1_component, w, retain_graph=True)[0].norm()
+                g_msd = torch.autograd.grad(intermediate_msd, w, retain_graph=True)[0].norm()
+                g_lp  = torch.autograd.grad(lpips_component, w, retain_graph=True)[0].norm()
+                lambda_msd   = (g_rec / (g_msd + eps)).detach()
+                lambda_lpips = (g_rec / (g_lp + eps)).detach()
+                self.lambda_msd, self.lambda_lpips = lambda_msd, lambda_lpips    
+
+            else:
+                lambda_msd, lambda_lpips = self.lambda_msd, self.lambda_lpips
 
             loss = l1_component + lambda_msd*intermediate_msd + lambda_lpips*lpips_component # final loss 
 
@@ -129,6 +135,12 @@ class Codec(nn.Module):
         out = self.decoder(out)
         return out # lowkey irelevant for now, maybe I should change it when the world model will be plugged into encode and decode functions
         
+    def train(self, mode=True):
+        super().train(mode)
+        self.lpips.eval()
+        self.encoder.dino.eval()
+        return self
+
 # ---- Encoder ------
 
 class Encoder(nn.Module):
@@ -136,7 +148,7 @@ class Encoder(nn.Module):
     def __init__(self, layers=(11, 13, 15, 17, 19, 21, 23), C=32, H=288, W=512, n_embd=1024): # ugly number of layers
         super().__init__()
         # btw 1024 is dino's encoding dim, not ours, ours is 1152
-        self.dino = AutoModel.from_pretrained('facebook/dinov3-vitl16-pretrain-lvd1689m') # import DINO model
+        self.dino = AutoModel.from_pretrained('facebook/dinov3-vitl16-pretrain-lvd1689m', attn_implementation="sdpa") # import DINO model, attn impl swaps manual atn for F.scaled_dot_product_attention
         self.dino.eval().requires_grad_(False) # making sure we don't backprop/optimize through dino (300M params)
         # btw for ViT-L, all embedding spaces have 1024 channels, hence : 
         self.layers = layers
@@ -293,7 +305,7 @@ class Attention(nn.Module):
       self.space_heads = nn.ModuleList([SpaceAttentionHead(n_head=n_head, T=T, n_embd=n_embd) for _ in range(n_head)])
       self.time_heads = nn.ModuleList([TimeAttentionHead(n_head=n_head, T=T, n_embd=n_embd) for _ in range(n_head)])
       self.space_ln = nn.LayerNorm(n_embd)
-      self.time_ln = nn.LayerNorm(n_embd) # since we'll work with the output of the 1st space attention layer
+      self.time_ln = nn.LayerNorm(n_embd)  # since we'll work with the output of the 1st space attention layer
       self.space_mixing = nn.Linear(n_embd, n_embd)
       self.time_mixing = nn.Linear(n_embd, n_embd) # linear layers we'll use to mix the concatenations 
 
@@ -302,12 +314,16 @@ class Attention(nn.Module):
       # we need first to apply spatial attention to all frames and then time attention too
       T, H, W, emb = x.shape
       out = self.space_ln(x) # pre-norm layer norm
+      if torch.is_autocast_enabled():
+          out = out.to(torch.get_autocast_dtype("cuda"))
       out = torch.concat([h(out) for h in self.space_heads], dim=-1).reshape(T,H,W,self.n_embd) # applying space attention, we also let a residual connection in
       # reshaping into 2d output for us to have coherent space and time attention head code and to be consistent
       out = self.space_mixing(out) #mixing
       out = out + x #residual connection for space attention (2d)
       newx = out # output of the space attention is the new input for the time attention
       out = self.time_ln(newx) # 2nd pre-norm layernorm
+      if torch.is_autocast_enabled():
+          out = out.to(torch.get_autocast_dtype("cuda"))
       out = torch.concat([h(out) for h in self.time_heads], dim=-1).reshape(T,H,W,self.n_embd) # stacking the columns
       out = self.time_mixing(out)
       out = out + newx # residual connection for time attention
