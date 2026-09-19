@@ -11,8 +11,9 @@ Currentley trying to re-implement the paper and at the moment I changed the mixi
 
 ## Current state: 
 
-Completley done with the codec, data loader and training loop end to end, only issue is that we are not able to debug on my machine since it won't run (cpu nor mps) we uped the dataset to 6 shards (18GB) and will try to overfit it on that tommorow
-on rented compute
+Completley done with the codec, data loader and training loop end to end, only issue is that we are not able to debug on my machine since it won't run (cpu nor mps) we uped the dataset to 6 shards (18GB), we also tied down the passing arguments from each sub-block of the codec in a cascading/graph way such that we now exert full control over the size of the model through its hyperparameters.
+Ran a 10 round training test (MPS is acting overly weird and slow compared to what I experienced before) and got outputs that I could not distinguish from noise, which is not too unexpected
+<img src="./training_output//20260919_123750/samples/step_000009.png" width = "400px">
 
 ### Direct next steps:
 

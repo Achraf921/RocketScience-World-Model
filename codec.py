@@ -430,7 +430,7 @@ class RLClips(Dataset):
         for meta in sorted(glob.glob(os.path.join(root, "*.meta.json"))):
             key = meta[:-len(".meta.json")]
             for p in views:
-                for start in (0, 40): # two windows per 80-frame chunk
+                for start in (0, T): # two windows per 80-frame chunk
                     self.entries.append((key, p, start))
 
     def __len__(self):

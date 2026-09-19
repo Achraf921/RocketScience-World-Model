@@ -17,8 +17,9 @@ log = open(f"{run}/log.txt", "a")
 
 #------ some hyper params (most are specified within the model such as lr, schedule, format, go check codec.py)
 
-batch_size = 4 # 32 per the paper
-total_steps = 249000 # 249 000
+batch_size = 1 # 32 per the paper
+total_steps = 10 # 249 000
+warmup_steps = 1 #1000
 min_lr = 1e-6
 max_lr = 2e-4
 num_workers = 0
@@ -34,17 +35,17 @@ depth = 4
 n_embd = 256
 
 # -------- model
-codec = Codec(batch_size=batch_size, total_steps=total_steps, min_lr=min_lr, max_lr=max_lr, decoder_mlp_mult=decoder_mlp_mult, n_head=n_head, depth=depth, T=T, n_embd=n_embd).to(device)
+codec = Codec(batch_size=batch_size, total_steps=total_steps, min_lr=min_lr, max_lr=max_lr, decoder_mlp_mult=decoder_mlp_mult, n_head=n_head, depth=depth, T=T, n_embd=n_embd, warmup_steps=warmup_steps).to(device)
 
 # just to get parameter count before a run
 paramlist = []
     
 nparams = nparams = sum(p.numel() for p in codec.parameter_list)
 
-print(nparams)
-print(device)
+print(f'Parameter count : {nparams}')
+print(f'Device : {device}')
 
-import sys; sys.exit(0)
+#import sys; sys.exit(0)
 
 # we start by loading the training data
 ds = RLClips("data/rocket/train/unpacked", T=T)
@@ -52,7 +53,7 @@ dl = DataLoader(ds, batch_size=batch_size, shuffle=True, num_workers=num_workers
 it = iter(dl)
 # iterator of tensors [32, 40, 3, 720, 1280], 30672 of them exactly from our current data
 
-ds_test = RLClips("data/rocket/test/unpacked")
+ds_test = RLClips("data/rocket/test/unpacked", T=T)
 dl_test = DataLoader(ds_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 it_test = iter(dl_test)
 
@@ -80,7 +81,7 @@ for step in range(total_steps):
         g['lr'] = lr
     codec.optimizer.step()
     # Training loss
-    print(f'Training Loss : {loss:.4f}')
+    print(f'Step : {step}, Training Loss : {loss:.4f}')
     log.write(f"train,{step},{lr:.2e},{loss.item():.4f}\n"); log.flush()
 
     # every 250 steps, compute validation loss: 
