@@ -11,12 +11,12 @@ Currentley trying to re-implement the paper and at the moment I changed the mixi
 
 ## Current state: 
 
-Done with the codec end to end, pre-processor, encoder, decoder, post-processor (optional and really only useful for inference),
-Also done with the loss implementation, optimizer and all the helper functions we needed, we are just missing the data loader to start training
+Completley done with the codec, data loader and training loop end to end, only issue is that we are not able to debug on my machine since it won't run (cpu nor mps) we uped the dataset to 6 shards (18GB) and will try to overfit it on that tommorow
+on rented compute
 
 ### Direct next steps:
 
-data loader then train !
+rent compute
 
 
 ## BTW
