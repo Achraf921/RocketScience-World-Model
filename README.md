@@ -11,12 +11,12 @@ Currentley trying to re-implement the paper and at the moment I changed the mixi
 
 ## Current state: 
 
-Done with the codec end to end, pre-processor, encoder, decoder, post-processor (optional and really only useful for inference)
-Building the loss/optimizer and training loop as specified by the paper
+Done with the codec end to end, pre-processor, encoder, decoder, post-processor (optional and really only useful for inference),
+Also done with the loss implementation, optimizer and all the helper functions we needed, we are just missing the data loader to start training
 
 ### Direct next steps:
 
-train !
+data loader then train !
 
 
 ## BTW
