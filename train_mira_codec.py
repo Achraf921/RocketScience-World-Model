@@ -18,21 +18,21 @@ log = open(f"{run}/log.txt", "a")
 #------ some hyper params (most are specified within the model such as lr, schedule, format, go check codec.py)
 
 batch_size = 1 # 32 per the paper
-total_steps = 10 # 249 000
-warmup_steps = 1 #1000
+total_steps = 32000 # 249 000
+warmup_steps = 2000 #1000
 min_lr = 1e-6
 max_lr = 2e-4
-num_workers = 0
-checkpoint = 100000 # every checkpoint, steps, we save a snapshot of the weights
+num_workers = 8 
+checkpoint = 10000 # every checkpoint, steps, we save a snapshot of the weights
 device = 'mps' if torch.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 #------ some hyperparameters to scale down the model for M4, 24GB test training, discard/comment_out for the real run
-decoder_mlp_mult = 1
-T = 16
-n_head = 4
-depth = 4
-n_embd = 256
+decoder_mlp_mult = 4
+T = 40
+n_head = 12
+depth = 12
+n_embd = 768
 
 # -------- model
 codec = Codec(batch_size=batch_size, total_steps=total_steps, min_lr=min_lr, max_lr=max_lr, decoder_mlp_mult=decoder_mlp_mult, n_head=n_head, depth=depth, T=T, n_embd=n_embd, warmup_steps=warmup_steps).to(device)
@@ -69,11 +69,12 @@ for step in range(total_steps):
 
     codec.train() # switching bool on
     x = batch.flatten(0, 1) # (T*B, C, H, W)
-    x = codec.pre_processor(x)
-    enc, intermediate = codec.encoder(x, is_training=True) # such that we get both output and the layers we need
-    y = codec.decoder(enc)
-    # bakward pass on loss
-    loss = codec.loss(x,y,intermediate_layers=intermediate)
+    with torch.autocast("cuda", dtype=torch.bfloat16):
+        x = codec.pre_processor(x)
+        enc, intermediate = codec.encoder(x, is_training=True) # such that we get both output and the layers we need
+        y = codec.decoder(enc)
+        # bakward pass on loss
+        loss = codec.loss(x,y,intermediate_layers=intermediate)
     lr = codec._get_cosine_lr(step)
     codec.optimizer.zero_grad()
     loss.backward()
@@ -102,7 +103,7 @@ for step in range(total_steps):
         log.write(f"val,{step},{lr:.2e},{val_loss.item():.4f}\n"); log.flush()
 
     # every 1000 steps, save the batch's first 10 images before and after
-    if step%1000 == 0 or step == total_steps -1:
+    if step%500 == 0 or step == total_steps -1:
         x_first10 = codec.post_processor(x[:10,:,:,:]).float() * (1/255)
         y_first10 = codec.post_processor(y[:10,:,:,:]).float() * (1/255) # we finally use post processor lol
         pair = torch.cat([x_first10, y_first10], dim=3)
@@ -114,3 +115,41 @@ for step in range(total_steps):
             "model": {k: v for k, v in codec.state_dict().items() if not k.startswith(("encoder.dino", "lpips"))},
             "optimizer": codec.optimizer.state_dict(),
         }, f"{run}/checkpoints/step_{step:07d}.pt")
+
+
+'''
+Hyperparameters I used for the local test :
+
+batch_size = 1 
+total_steps = 10 
+warmup_steps = 1
+min_lr = 1e-6
+max_lr = 2e-4
+num_workers = 0
+checkpoint = 100000
+decoder_mlp_mult = 1
+T = 16
+n_head = 4
+depth = 4
+n_embd = 256
+
+Hyperparameters I used for the real training run :
+
+
+batch_size = 1
+total_steps = 32000
+warmup_steps = 1000 
+min_lr = 1e-6
+max_lr = 2e-4
+num_workers = 8 
+checkpoint = 2000
+decoder_mlp_mult = 4
+T = 40
+n_head = 12
+depth = 12
+n_embd = 768
+
+with 50 train shards and 4 val shards downloaded
+
+
+'''

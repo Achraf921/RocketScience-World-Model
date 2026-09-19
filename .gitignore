@@ -3,3 +3,4 @@
 data/
 package-lock.json
 packaghe.json
+training_output/**/checkpoints/
