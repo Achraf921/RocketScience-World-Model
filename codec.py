@@ -339,11 +339,7 @@ class SpaceAttentionHead(nn.Module): # not a join space-time attention, we are a
       # we now apply our layer norms real quick 
       Q = self.q_ln(Q)
       K = self.k_ln(K)
-      dnorm = 1/(math.sqrt(K.shape[-1])) #dimentionality of K
-      QK = Q @ K.transpose(-2,-1) # using permute to transpose to run the dot products
-      QKnormed = QK * dnorm
-      softmaxedQK = torch.softmax(QKnormed, dim=-1) # on the columns
-      out = softmaxedQK @ V
+      out = F.scaled_dot_product_attention(Q, K, V)
       return out
 
 class TimeAttentionHead(nn.Module):
@@ -354,7 +350,6 @@ class TimeAttentionHead(nn.Module):
       self.wQ = nn.Linear(n_embd, self.emb_head)
       self.wK = nn.Linear(n_embd, self.emb_head)
       self.wV = nn.Linear(n_embd, self.emb_head)
-      self.dk = 1/(math.sqrt(self.emb_head)) # dimensionality of the keys
       # we also need our layer norm layers for the QK normalization applies in layer norm
       self.ln_q= nn.LayerNorm(self.emb_head)
       self.ln_k= nn.LayerNorm(self.emb_head)
@@ -374,13 +369,8 @@ class TimeAttentionHead(nn.Module):
       # QK norm
       Q = self.ln_q(Q)
       K = self.ln_k(K)
-      QK = Q @ K.permute(0, 2, 1) #pairwise matmul
-      QK = QK * self.dk
       # now we need to mask
-      mask = torch.tril(torch.ones(T, T, dtype=torch.bool, device = x.device)) # of same shape as QK
-      QK = QK.masked_fill(~mask, float('-inf')) # btw ~ is the bitwise not operator meaning on NOT True (bool True) it replaced by -inf
-      out = torch.softmax(QK, dim=-1) # on the columns
-      out = out @ V #(H*W, T, head_emb) shape through tensor-wise mat-mul
+      out = F.scaled_dot_product_attention(Q, K, V, is_causal=True) 
       out = out.permute(1,0,2) # going back to frames first
       return out
 

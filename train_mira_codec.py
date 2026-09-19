@@ -18,8 +18,8 @@ log = open(f"{run}/log.txt", "a")
 #------ some hyper params (most are specified within the model such as lr, schedule, format, go check codec.py)
 
 batch_size = 1 # 32 per the paper
-total_steps = 32000 # 249 000
-warmup_steps = 2000 #1000
+total_steps = 100 # 249 000
+warmup_steps = 20 #1000
 min_lr = 1e-6
 max_lr = 2e-4
 num_workers = 8 

@@ -3,26 +3,23 @@
 from huggingface_hub import snapshot_download
 import os, tarfile
 
+N_TRAIN, N_TEST = 50, 6
+root = './data/rocket'
+
+patterns = ['train/index.json', 'test/index.json'] + [f'train/dataset_{i:05d}.tar' for i in range(N_TRAIN)] + [f'test/dataset_{i:05d}.tar'  for i in range(N_TEST)]
+
 snapshot_download(
     "kyutai/rocket-science",
     repo_type='dataset',
-    allow_patterns = ['train/index.json', 'train/dataset_00000.tar', 'train/dataset_00001.tar', 'train/dataset_00002.tar','train/dataset_00003.tar', 'train/dataset_00004.tar','train/dataset_00005.tar',
-                        'test/index.json', 'test/dataset_00000.tar'], # split : 6 train shards, 1 test shard
+    allow_patterns=patterns,
     local_dir = './data/rocket'
 )
 # takes around 30-35 mins, you can give it a scroll
 
-file1 = './data/rocket/train/dataset_00000.tar'
-file2 = './data/rocket/train/dataset_00001.tar'
-file3 = './data/rocket/train/dataset_00002.tar'
-file4 = './data/rocket/train/dataset_00003.tar'
-file5 = './data/rocket/train/dataset_00004.tar'
-file6 = './data/rocket/train/dataset_00005.tar'
-file7 = './data/rocket/test/dataset_00000.tar'
-train_files = [file1, file2, file3, file4, file5, file6] # feel free to add as many shards as you need/can
+train_files = [f'{root}/train/dataset_{i:05d}.tar' for i in range(N_TRAIN)]
 dst_train = './data/rocket/train/unpacked'
 
-test_files = [file7]
+test_files = [f'{root}/test/dataset_{i:05d}.tar' for i in range(N_TEST)]
 dst_test = './data/rocket/test/unpacked'
 
 os.makedirs(dst_train, exist_ok=True)
